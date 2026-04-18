@@ -95,6 +95,21 @@ float FilterProcessor::getMagnitudeForFrequency(float frequency, double sampleRa
     return magnitude;
 }
 
+float FilterProcessor::calculateMaxGain() const
+{
+    float maxMag = 1.0f;
+    const int numSteps = 100;
+    
+    // Check 100 points logarithmic-ish from 20Hz to 20kHz
+    for (int i = 0; i <= numSteps; ++i)
+    {
+        float freq = 20.0f * std::pow(1000.0f, (float)i / numSteps);
+        maxMag = std::max(maxMag, getMagnitudeForFrequency(freq, m_sampleRate));
+    }
+    
+    return juce::Decibels::gainToDecibels(maxMag);
+}
+
 void FilterProcessor::parseAutoEqString(const std::string& autoEqContent)
 {
     const juce::ScopedLock sl(m_coefficientsLock);

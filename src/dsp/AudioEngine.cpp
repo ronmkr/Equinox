@@ -1,6 +1,7 @@
 #include "AudioEngine.h"
 #include "InternalEqProcessor.h"
 #include "LimiterProcessor.h"
+#include "CrossfeedProcessor.h"
 
 namespace equinox
 {
@@ -55,6 +56,7 @@ void AudioEngine::setupGraph()
         juce::AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode));
 
     m_eqNode = m_mainGraph->addNode(std::make_unique<InternalEqProcessor>(m_deviceFilterProcessor));
+    m_crossfeedNode = m_mainGraph->addNode(std::make_unique<CrossfeedProcessor>());
     m_limiterNode = m_mainGraph->addNode(std::make_unique<LimiterProcessor>());
 
     updateGraphRouting();
@@ -116,9 +118,17 @@ void AudioEngine::removePlugin(int index)
     }
 }
 
+void AudioEngine::applyAutoPreamp()
+{
+    float maxGain = m_deviceFilterProcessor.calculateMaxGain();
+    // Set preamp to -maxGain with a small 0.1dB safety buffer
+    m_deviceFilterProcessor.setPreamp(-(maxGain + 0.1f));
+}
+
 void AudioEngine::updateGraphRouting()
 {
-    if (m_audioInputNode == nullptr || m_audioOutputNode == nullptr || m_eqNode == nullptr || m_limiterNode == nullptr)
+    if (m_audioInputNode == nullptr || m_audioOutputNode == nullptr || 
+        m_eqNode == nullptr || m_crossfeedNode == nullptr || m_limiterNode == nullptr)
         return;
 
     m_mainGraph->suspendProcessing(true);
@@ -126,14 +136,27 @@ void AudioEngine::updateGraphRouting()
     for (const auto& connection : m_mainGraph->getConnections())
         m_mainGraph->removeConnection(connection);
 
+    // Current Chain: Input -> EQ -> Crossfeed -> [Plugins] -> Limiter -> Output
+    
     auto lastNode = m_eqNode;
 
+    // Connect Input -> EQ
     for (int channel = 0; channel < 2; ++channel)
     {
         m_mainGraph->addConnection({ { m_audioInputNode->nodeID, channel },
                                      { m_eqNode->nodeID, channel } });
     }
 
+    // Connect EQ -> Crossfeed
+    for (int channel = 0; channel < 2; ++channel)
+    {
+        m_mainGraph->addConnection({ { m_eqNode->nodeID, channel },
+                                     { m_crossfeedNode->nodeID, channel } });
+    }
+    
+    lastNode = m_crossfeedNode;
+
+    // Connect Plugins in series
     for (auto& pluginNode : m_pluginNodes)
     {
         for (int channel = 0; channel < 2; ++channel)
@@ -144,12 +167,14 @@ void AudioEngine::updateGraphRouting()
         lastNode = pluginNode;
     }
 
+    // Connect last node to Limiter
     for (int channel = 0; channel < 2; ++channel)
     {
         m_mainGraph->addConnection({ { lastNode->nodeID, channel },
                                      { m_limiterNode->nodeID, channel } });
     }
 
+    // Connect Limiter to Output
     for (int channel = 0; channel < 2; ++channel)
     {
         m_mainGraph->addConnection({ { m_limiterNode->nodeID, channel },

@@ -37,6 +37,7 @@ target_sources(Equinox PRIVATE
     src/dsp/AudioEngine.h
     src/dsp/InternalEqProcessor.h
     src/dsp/LimiterProcessor.h
+    src/dsp/CrossfeedProcessor.h
     src/dsp/ProfileManager.cpp
     src/dsp/ProfileManager.h
     src/ui/MainComponent.cpp

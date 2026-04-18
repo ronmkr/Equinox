@@ -35,6 +35,11 @@ public:
 
     [[nodiscard]] float getMagnitudeForFrequency(float frequency, double sampleRate) const;
 
+    /**
+     * @brief Calculates the maximum peak gain of the current EQ curve in decibels.
+     */
+    [[nodiscard]] float calculateMaxGain() const;
+
     using Filter = juce::dsp::IIR::Filter<float>;
     using FilterChain = juce::dsp::ProcessorChain<
         Filter, Filter, Filter, Filter, Filter, Filter, Filter, Filter, Filter, Filter,

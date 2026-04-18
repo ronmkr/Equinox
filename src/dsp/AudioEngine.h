@@ -27,6 +27,13 @@ public:
     [[nodiscard]] juce::AudioPluginFormatManager& getPluginFormatManager() { return m_pluginFormatManager; }
     [[nodiscard]] juce::KnownPluginList& getKnownPluginList() { return m_knownPluginList; }
 
+    [[nodiscard]] juce::AudioProcessorGraph::Node::Ptr getCrossfeedNode() { return m_crossfeedNode; }
+
+    /**
+     * @brief Automatically adjusts the preamp gain to avoid clipping.
+     */
+    void applyAutoPreamp();
+
     void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
                                           int numInputChannels,
                                           float* const* outputChannelData,
@@ -69,6 +76,7 @@ private:
     juce::AudioProcessorGraph::Node::Ptr m_audioInputNode;
     juce::AudioProcessorGraph::Node::Ptr m_audioOutputNode;
     juce::AudioProcessorGraph::Node::Ptr m_eqNode;
+    juce::AudioProcessorGraph::Node::Ptr m_crossfeedNode;
     juce::AudioProcessorGraph::Node::Ptr m_limiterNode;
     
     std::vector<juce::AudioProcessorGraph::Node::Ptr> m_pluginNodes;

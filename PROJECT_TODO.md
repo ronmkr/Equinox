@@ -19,10 +19,11 @@
     - [x] Refactor to macOS Menu Bar (Status Item).
     - [x] Toggleable utility window with "Always on Top".
     - [x] Native quick-access menu for profiles and toggles.
-- [ ] **Phase 7: Headphone DSP & Safety**
-    - [ ] Crossfeed algorithm.
+- [x] **Phase 7: Headphone DSP & Safety**
+    - [x] Crossfeed algorithm (Linkwitz-style implementation).
     - [x] `dsp::Limiter` (Safety Limiter implemented).
-    - [ ] Auto-Preamp calculator.
+    - [x] Auto-Preamp calculator.
+
 - [ ] **Phase 8: Hardware State & Dynamic Adaptation**
     - [ ] Device listeners and UUID-based profile switching.
 - [ ] **Phase 9: Convolution & Multi-Mono**

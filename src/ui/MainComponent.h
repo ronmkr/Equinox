@@ -35,6 +35,11 @@ private:
     
     juce::AudioDeviceSelectorComponent deviceSelector;
 
+    // Additional Settings
+    juce::ToggleButton crossfeedToggle { "Enable Headphone Crossfeed" };
+    juce::Slider crossfeedAmount { juce::Slider::LinearHorizontal, juce::Slider::NoTextBox };
+    juce::ToggleButton autoPreampToggle { "Auto-Preamp (Avoid Clipping)" };
+
     // Plugins Tab
     juce::Component pluginsContainer;
     juce::ListBox knownPluginsList;
@@ -45,8 +50,10 @@ private:
 
     struct EqLayout;
     struct PluginsLayout;
+    struct SettingsLayout;
     std::unique_ptr<EqLayout> eqLayout;
     std::unique_ptr<PluginsLayout> pluginsLayout;
+    std::unique_ptr<SettingsLayout> settingsLayout;
 
     struct KnownPluginsModel : public juce::ListBoxModel {
         AudioEngine& engine;
