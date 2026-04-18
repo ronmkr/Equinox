@@ -68,6 +68,19 @@ target_link_libraries(Equinox PRIVATE
 # Enable subnormal number handling and standard JUCE defines
 juce_generate_juce_header(Equinox)
 
+# Speed up builds with Precompiled Headers
+target_precompile_headers(Equinox PRIVATE
+    <juce_audio_basics/juce_audio_basics.h>
+    <juce_audio_devices/juce_audio_devices.h>
+    <juce_audio_formats/juce_audio_formats.h>
+    <juce_audio_processors/juce_audio_processors.h>
+    <juce_audio_utils/juce_audio_utils.h>
+    <juce_core/juce_core.h>
+    <juce_dsp/juce_dsp.h>
+    <juce_gui_basics/juce_gui_basics.h>
+    <juce_gui_extra/juce_gui_extra.h>
+)
+
 target_compile_definitions(Equinox PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0

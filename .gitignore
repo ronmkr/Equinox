@@ -7,15 +7,39 @@ Makefile
 cmake_install.cmake
 install_manifest.txt
 compile_commands.json
+.cache/
 
 # IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
+*.user
+*.user.*
+.vs/
+*.suo
+*.db
+*.opendb
 
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
 
 # JUCE
 JuceLibraryCode/
+_deps/
+
+# C/C++
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.exe
+*.out
+*.app/
+*.pdb
+*.ilk
+*.exp
