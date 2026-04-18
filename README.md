@@ -55,7 +55,7 @@ cmake --build . --parallel $(sysctl -n hw.ncpu)
 ```
 
 ### ⚡ Why are builds slow?
-JUCE is a massive framework. We've implemented **Precompiled Headers (PCH)** to speed up compilation. To further improve speed:
+JUCE is a massive framework. We've optimized the project for JUCE 8. To further improve speed:
 *   **Avoid clean builds:** Only use `rm -rf build` when absolutely necessary.
 *   **Use Parallel Building:** Always use the `--parallel` flag as shown above.
 *   **Install Ninja (Recommended):** `brew install ninja`. Then build with `cmake .. -G Ninja`.
