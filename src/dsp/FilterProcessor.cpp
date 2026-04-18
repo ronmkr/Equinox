@@ -26,7 +26,7 @@ void FilterProcessor::prepareToPlay(double sampleRate, int samplesPerBlock, int 
 
 void FilterProcessor::processBlock(juce::AudioBuffer<float>& buffer)
 {
-    if (m_isBypassed.load())
+    if (m_isBypassed.load() || buffer.getNumChannels() == 0)
         return;
 
     // Apply Preamp

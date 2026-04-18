@@ -24,7 +24,10 @@ public:
         m_menuBarIcon = std::make_unique<equinox::MenuBarIcon>(m_audioEngine, [this] {
             showMainWindow();
         });
+
+        showMainWindow();
     }
+
 
     void shutdown() override
     {

@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
 
+# Suppress FetchContent warnings about DOWNLOAD_EXTRACT_TIMESTAMP
+if(POLICY CMP0135)
+  cmake_policy(SET CMP0135 NEW)
+endif()
+
 project(Equinox VERSION 0.1.0)
 
 # Set C++ standard
@@ -42,6 +47,7 @@ target_sources(Equinox PRIVATE
     src/dsp/ProfileManager.h
     src/ui/MainComponent.cpp
     src/ui/MainComponent.h
+    src/ui/TahoeLookAndFeel.h
     src/ui/MenuBarIcon.cpp
     src/ui/MenuBarIcon.h
     src/ui/GraphicEqComponent.cpp

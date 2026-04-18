@@ -6,11 +6,12 @@
 #include "../dsp/ProfileManager.h"
 #include "GraphicEqComponent.h"
 #include "ParametricCurveComponent.h"
+#include "TahoeLookAndFeel.h"
 
 namespace equinox
 {
 
-class MainComponent : public juce::Component
+class MainComponent : public juce::Component, public juce::Timer
 {
 public:
     MainComponent(AudioEngine& engine);
@@ -18,11 +19,18 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    
+    void timerCallback() override
+    {
+        tahoeLookAndFeel.refreshColours();
+        repaint();
+    }
 
 private:
     AudioEngine& audioEngine;
     ProfileManager profileManager;
     
+    TahoeLookAndFeel tahoeLookAndFeel;
     juce::TabbedComponent tabs;
     
     // EQ Tab controls
@@ -75,21 +83,23 @@ private:
         }
         void closeButtonPressed() override { delete this; }
     };
-    juce::ComponentSafePointer<juce::Component> activePluginWindow;
+    juce::Component::SafePointer<juce::Component> activePluginWindow;
 
     struct KnownPluginsModel : public juce::ListBoxModel {
         AudioEngine& engine;
         KnownPluginsModel(AudioEngine& e) : engine(e) {}
-        int getNumRows() override { return engine.getKnownPluginList().getNumTypes(); }
+        int getNumRows() override;
         void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override;
-    } knownPluginsModel;
+    };
+    KnownPluginsModel knownPluginsModel;
 
     struct ActivePluginsModel : public juce::ListBoxModel {
         AudioEngine& engine;
         ActivePluginsModel(AudioEngine& e) : engine(e) {}
-        int getNumRows() override { /* will need a way to get count from engine */ return 0; }
+        int getNumRows() override;
         void paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected) override;
-    } activePluginsModel;
+    };
+    ActivePluginsModel activePluginsModel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

@@ -14,6 +14,8 @@ class LimiterProcessor : public juce::AudioProcessor
 {
 public:
     LimiterProcessor()
+        : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
+                                           .withOutput("Output", juce::AudioChannelSet::stereo(), true))
     {
         limiter.setThreshold(0.0f); // 0 dBFS
         limiter.setRelease(100.0f); // 100 ms
@@ -21,9 +23,16 @@ public:
 
     const juce::String getName() const override { return "Safety Limiter"; }
 
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override
+    {
+        return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo()
+            && layouts.getMainInputChannelSet()  == juce::AudioChannelSet::stereo();
+    }
+
     void prepareToPlay(double sampleRate, int samplesPerBlock) override
     {
-        juce::dsp::ProcessSpec spec { sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)getTotalNumOutputChannels() };
+        int numChannels = std::max(1, getTotalNumOutputChannels());
+        juce::dsp::ProcessSpec spec { sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)numChannels };
         limiter.prepare(spec);
     }
 
@@ -31,9 +40,12 @@ public:
 
     void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override
     {
-        juce::dsp::AudioBlock<float> block(buffer);
-        juce::dsp::ProcessContextReplacing<float> context(block);
-        limiter.process(context);
+        if (buffer.getNumChannels() > 0)
+        {
+            juce::dsp::AudioBlock<float> block(buffer);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            limiter.process(context);
+        }
     }
 
     // Mandatory juce::AudioProcessor overrides

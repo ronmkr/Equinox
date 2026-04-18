@@ -13,20 +13,32 @@ namespace equinox
 class InternalEqProcessor : public juce::AudioProcessor
 {
 public:
-    InternalEqProcessor(FilterProcessor& fp) : filterProcessor(fp) {}
+    InternalEqProcessor(FilterProcessor& fp) 
+        : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
+                                           .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+          filterProcessor(fp) 
+    {}
 
     const juce::String getName() const override { return "Equinox EQ"; }
 
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override
+    {
+        return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo()
+            && layouts.getMainInputChannelSet()  == juce::AudioChannelSet::stereo();
+    }
+
     void prepareToPlay(double sampleRate, int samplesPerBlock) override
     {
-        filterProcessor.prepareToPlay(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+        int numChannels = std::max(2, getTotalNumOutputChannels());
+        filterProcessor.prepareToPlay(sampleRate, samplesPerBlock, numChannels);
     }
 
     void releaseResources() override {}
 
     void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override
     {
-        filterProcessor.processBlock(buffer);
+        if (buffer.getNumChannels() > 0)
+            filterProcessor.processBlock(buffer);
     }
 
     // Mandatory juce::AudioProcessor overrides

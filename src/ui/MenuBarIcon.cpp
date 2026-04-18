@@ -7,13 +7,23 @@ MenuBarIcon::MenuBarIcon(AudioEngine& engine, std::function<void()> openWindowCa
     : m_audioEngine(engine),
       m_openWindowCallback(openWindowCallback)
 {
-    // For now, we use a simple built-in icon or a solid color square 
-    // because we don't have BinaryData assets yet.
-    // In a real app, you'd use a template PNG icon.
-    juce::Image icon(juce::Image::ARGB, 20, 20, true);
+    // Create a beautiful sine wave template icon
+    juce::Image icon(juce::Image::ARGB, 22, 22, true);
     juce::Graphics g(icon);
-    g.setColour(juce::Colours::white);
-    g.fillEllipse(2, 2, 16, 16);
+    
+    g.setColour(juce::Colours::black);
+    juce::Path p;
+    auto w = 22.0f;
+    auto h = 22.0f;
+    
+    p.startNewSubPath(2.0f, h * 0.5f);
+    for (float x = 2.0f; x <= w - 2.0f; x += 1.0f)
+    {
+        float y = h * 0.5f + std::sin((x / (w - 4.0f)) * juce::MathConstants<float>::twoPi) * (h * 0.3f);
+        p.lineTo(x, y);
+    }
+    
+    g.strokePath(p, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     
     setIconImage(icon, icon); // Template icon
     setIconTooltip("Equinox Audiophile EQ");

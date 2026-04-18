@@ -29,6 +29,7 @@ void AudioEngine::initialize()
 
     setupGraph();
     
+    // Connect to player without explicit prepare here (let audioDeviceAboutToStart handle it)
     m_graphPlayer.setProcessor(m_mainGraph.get());
     m_deviceManager.addAudioCallback(&m_graphPlayer);
     m_deviceManager.addAudioCallback(this);
@@ -58,6 +59,13 @@ void AudioEngine::setupGraph()
     m_eqNode = m_mainGraph->addNode(std::make_unique<InternalEqProcessor>(m_deviceFilterProcessor));
     m_crossfeedNode = m_mainGraph->addNode(std::make_unique<CrossfeedProcessor>());
     m_limiterNode = m_mainGraph->addNode(std::make_unique<LimiterProcessor>());
+
+    // Enable all buses for each node to ensure ports are available
+    m_audioInputNode->getProcessor()->enableAllBuses();
+    m_audioOutputNode->getProcessor()->enableAllBuses();
+    m_eqNode->getProcessor()->enableAllBuses();
+    m_crossfeedNode->getProcessor()->enableAllBuses();
+    m_limiterNode->getProcessor()->enableAllBuses();
 
     updateGraphRouting();
 }
@@ -136,56 +144,35 @@ void AudioEngine::updateGraphRouting()
     for (const auto& connection : m_mainGraph->getConnections())
         m_mainGraph->removeConnection(connection);
 
-    // Current Chain: Input -> EQ -> Crossfeed -> [Plugins] -> Limiter -> Output
-    
-    auto lastNode = m_eqNode;
+    // Dynamic serial chain: Input -> EQ -> Crossfeed -> [Plugins] -> Limiter -> Output
+    std::vector<juce::AudioProcessorGraph::Node::Ptr> chain;
+    chain.push_back(m_audioInputNode);
+    chain.push_back(m_eqNode);
+    chain.push_back(m_crossfeedNode);
+    for (auto& p : m_pluginNodes) chain.push_back(p);
+    chain.push_back(m_limiterNode);
+    chain.push_back(m_audioOutputNode);
 
-    // Connect Input -> EQ
-    for (int channel = 0; channel < 2; ++channel)
+    for (size_t i = 0; i < chain.size() - 1; ++i)
     {
-        m_mainGraph->addConnection({ { m_audioInputNode->nodeID, channel },
-                                     { m_eqNode->nodeID, channel } });
-    }
-
-    // Connect EQ -> Crossfeed
-    for (int channel = 0; channel < 2; ++channel)
-    {
-        m_mainGraph->addConnection({ { m_eqNode->nodeID, channel },
-                                     { m_crossfeedNode->nodeID, channel } });
-    }
-    
-    lastNode = m_crossfeedNode;
-
-    // Connect Plugins in series
-    for (auto& pluginNode : m_pluginNodes)
-    {
+        auto src = chain[i];
+        auto dst = chain[i+1];
+        
         for (int channel = 0; channel < 2; ++channel)
         {
-            m_mainGraph->addConnection({ { lastNode->nodeID, channel },
-                                         { pluginNode->nodeID, channel } });
+            m_mainGraph->addConnection({ { src->nodeID, channel }, { dst->nodeID, channel } });
         }
-        lastNode = pluginNode;
-    }
-
-    // Connect last node to Limiter
-    for (int channel = 0; channel < 2; ++channel)
-    {
-        m_mainGraph->addConnection({ { lastNode->nodeID, channel },
-                                     { m_limiterNode->nodeID, channel } });
-    }
-
-    // Connect Limiter to Output
-    for (int channel = 0; channel < 2; ++channel)
-    {
-        m_mainGraph->addConnection({ { m_limiterNode->nodeID, channel },
-                                     { m_audioOutputNode->nodeID, channel } });
     }
 
     m_mainGraph->suspendProcessing(false);
 }
 
-void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* )
+void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
 {
+    if (device)
+    {
+        m_mainGraph->prepareToPlay(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
+    }
     updateGraphRouting();
 }
 

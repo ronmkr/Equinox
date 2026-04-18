@@ -11,10 +11,16 @@ struct MainComponent::EqLayout : public juce::Component {
         addAndMakeVisible(geq);
         addAndMakeVisible(curve);
     }
+    void paint(juce::Graphics& g) override {
+        auto r = getLocalBounds().removeFromTop(200).reduced(10);
+        g.setColour(juce::Colour(0xff111111));
+        g.fillRoundedRectangle(r.toFloat(), 10.0f);
+    }
     void resized() override {
         auto r = getLocalBounds();
-        curve.setBounds(r.removeFromTop(200));
-        geq.setBounds(r);
+        auto visualizerArea = r.removeFromTop(200).reduced(15);
+        curve.setBounds(visualizerArea);
+        geq.setBounds(r.reduced(10, 0));
     }
 };
 
@@ -71,6 +77,31 @@ struct MainComponent::SettingsLayout : public juce::Component {
     }
 };
 
+int MainComponent::KnownPluginsModel::getNumRows() { return engine.getKnownPluginList().getNumTypes(); }
+void MainComponent::KnownPluginsModel::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected)
+{
+    if (selected) g.fillAll(juce::Colours::lightblue);
+    g.setColour(selected ? juce::Colours::black : juce::Colours::white);
+    auto& list = engine.getKnownPluginList();
+    if (row < list.getNumTypes())
+    {
+        auto type = list.getTypes()[row];
+        g.drawText(type.name + " (" + type.pluginFormatName + ")", 5, 0, width, height, juce::Justification::centredLeft);
+    }
+}
+
+int MainComponent::ActivePluginsModel::getNumRows() { return engine.getHostedPluginCount(); }
+void MainComponent::ActivePluginsModel::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected)
+{
+    if (selected) g.fillAll(juce::Colours::lightblue);
+    g.setColour(selected ? juce::Colours::black : juce::Colours::white);
+    if (row < engine.getHostedPluginCount())
+    {
+        auto desc = engine.getHostedPluginDescription(row);
+        g.drawText(desc.name, 5, 0, width, height, juce::Justification::centredLeft);
+    }
+}
+
 MainComponent::MainComponent(AudioEngine& engine)
     : audioEngine(engine),
       tabs(juce::TabbedButtonBar::TabsAtTop),
@@ -80,6 +111,9 @@ MainComponent::MainComponent(AudioEngine& engine)
       knownPluginsModel(engine),
       activePluginsModel(engine)
 {
+    setLookAndFeel(&tahoeLookAndFeel);
+    startTimer(2000); // Check every 2 seconds
+    
     // Profile Controls
     addAndMakeVisible(saveButton);
     saveButton.onClick = [this] {
@@ -115,15 +149,17 @@ MainComponent::MainComponent(AudioEngine& engine)
     // Crossfeed / Preamp Config
     crossfeedToggle.setToggleState(false, juce::NotificationType::dontSendNotification);
     crossfeedToggle.onClick = [this] {
-        if (auto* cf = dynamic_cast<equinox::CrossfeedProcessor*>(audioEngine.getCrossfeedNode()->getProcessor()))
-            cf->setEnabled(crossfeedToggle.getToggleState());
+        if (auto node = audioEngine.getCrossfeedNode())
+            if (auto* cf = dynamic_cast<equinox::CrossfeedProcessor*>(node->getProcessor()))
+                cf->setEnabled(crossfeedToggle.getToggleState());
     };
 
     crossfeedAmount.setRange(0.0, 1.0, 0.01);
     crossfeedAmount.setValue(0.3);
     crossfeedAmount.onValueChange = [this] {
-        if (auto* cf = dynamic_cast<equinox::CrossfeedProcessor*>(audioEngine.getCrossfeedNode()->getProcessor()))
-            cf->setAmount((float)crossfeedAmount.getValue());
+        if (auto node = audioEngine.getCrossfeedNode())
+            if (auto* cf = dynamic_cast<equinox::CrossfeedProcessor*>(node->getProcessor()))
+                cf->setAmount((float)crossfeedAmount.getValue());
     };
 
     autoPreampToggle.setToggleState(false, juce::NotificationType::dontSendNotification);
@@ -140,6 +176,12 @@ MainComponent::MainComponent(AudioEngine& engine)
     knownPluginsList.setModel(&knownPluginsModel);
     activePluginsList.setModel(&activePluginsModel);
 
+    pluginsContainer.addAndMakeVisible(knownPluginsList);
+    pluginsContainer.addAndMakeVisible(activePluginsList);
+    pluginsContainer.addAndMakeVisible(scanButton);
+    pluginsContainer.addAndMakeVisible(addButton);
+    pluginsContainer.addAndMakeVisible(removeButton);
+
     scanButton.onClick = [this] {
         audioEngine.scanPlugins();
         knownPluginsList.updateContent();
@@ -149,7 +191,7 @@ MainComponent::MainComponent(AudioEngine& engine)
         auto row = knownPluginsList.getSelectedRow();
         if (row >= 0) {
             auto& list = audioEngine.getKnownPluginList();
-            if (audioEngine.addPlugin(*list.getType(row))) {
+            if (audioEngine.addPlugin(list.getTypes()[row])) {
                 activePluginsList.updateContent();
             }
         }
@@ -199,25 +241,6 @@ void MainComponent::resized()
     globalBypassToggle.setBounds(topBar.removeFromLeft(120).reduced(2));
 
     tabs.setBounds(area);
-}
-
-void MainComponent::KnownPluginsModel::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected)
-{
-    if (selected) g.fillAll(juce::Colours::lightblue);
-    g.setColour(selected ? juce::Colours::black : juce::Colours::white);
-    auto* type = engine.getKnownPluginList().getType(row);
-    if (type) g.drawText(type->name + " (" + type->pluginFormatName + ")", 5, 0, width, height, juce::Justification::centredLeft);
-}
-
-void MainComponent::ActivePluginsModel::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool selected)
-{
-    if (selected) g.fillAll(juce::Colours::lightblue);
-    g.setColour(selected ? juce::Colours::black : juce::Colours::white);
-    if (row < engine.getHostedPluginCount())
-    {
-        auto desc = engine.getHostedPluginDescription(row);
-        g.drawText(desc.name, 5, 0, width, height, juce::Justification::centredLeft);
-    }
 }
 
 } // namespace equinox

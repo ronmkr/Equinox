@@ -19,6 +19,8 @@ class CrossfeedProcessor : public juce::AudioProcessor
 {
 public:
     CrossfeedProcessor()
+        : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
+                                           .withOutput("Output", juce::AudioChannelSet::stereo(), true))
     {
         m_crossfeedAmount.store(0.3f); // Default 30% crossfeed
         m_isEnabled.store(false);      // Default to off
@@ -26,11 +28,18 @@ public:
 
     const juce::String getName() const override { return "Headphone Crossfeed"; }
 
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override
+    {
+        return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo()
+            && layouts.getMainInputChannelSet()  == juce::AudioChannelSet::stereo();
+    }
+
     void prepareToPlay(double sampleRate, int samplesPerBlock) override
     {
         m_sampleRate = sampleRate;
+        int numChannels = std::max(2, getTotalNumOutputChannels());
         
-        juce::dsp::ProcessSpec spec { sampleRate, (juce::uint32)samplesPerBlock, 2 };
+        juce::dsp::ProcessSpec spec { sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)numChannels };
         
         // Setup Low-Pass filters for the crossfeed signal
         // We want a gentle roll-off around 700-800Hz
