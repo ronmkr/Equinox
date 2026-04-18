@@ -1,0 +1,32 @@
+# Equinox Project Roadmap
+
+- [x] **Phase 1: Project Scaffolding & DSP Engine**
+    - [x] Setup CMake and JUCE modules.
+    - [x] Implement `FilterProcessor` (AutoEQ parsing + 31 Biquad cascade).
+- [x] **Phase 2: macOS System Routing**
+    - [x] CoreAudio loopback logic (Virtual Input -> Physical Output).
+- [x] **Phase 3: The Dual-Mode UI Sync**
+    - [x] 31-band Graphic Slider UI.
+    - [x] Parametric Visual UI with curve drawing.
+- [x] **Phase 4: Profile DB & A/B Toggle**
+    - [x] SQLite schema for profiles (XML persistent store).
+    - [x] Gapless A/B pointer swapping.
+- [x] **Phase 5: VST/AU Hosting**
+    - [x] `AudioProcessorGraph` integration for external plugins.
+    - [x] Plugin scanning and hosting infrastructure.
+    - [x] Basic UI for plugin management.
+- [x] **Phase 6: Menu Bar App Wrapping**
+    - [x] Refactor to macOS Menu Bar (Status Item).
+    - [x] Toggleable utility window with "Always on Top".
+    - [x] Native quick-access menu for profiles and toggles.
+- [ ] **Phase 7: Headphone DSP & Safety**
+    - [ ] Crossfeed algorithm.
+    - [x] `dsp::Limiter` (Safety Limiter implemented).
+    - [ ] Auto-Preamp calculator.
+- [ ] **Phase 8: Hardware State & Dynamic Adaptation**
+    - [ ] Device listeners and UUID-based profile switching.
+- [ ] **Phase 9: Convolution & Multi-Mono**
+    - [ ] `dsp::Convolution` for FIR (WAV) loading.
+    - [ ] Independent L/R channel processing.
+- [ ] **Phase 10: Dynamic Loudness Compensation**
+    - [ ] ISO 226:2003 implementation linked to system volume.
