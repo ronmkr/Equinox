@@ -59,6 +59,11 @@ public:
         return {};
     }
 
+    [[nodiscard]] juce::AudioProcessor* getHostedPluginProcessor(int index)
+    {
+        return m_pluginNodes[index]->getProcessor();
+    }
+
 private:
     void setupGraph();
     void updateGraphRouting();

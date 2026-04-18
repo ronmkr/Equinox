@@ -22,6 +22,16 @@ public:
     void reset();
 
     /**
+     * @brief Enables or disables all EQ processing.
+     */
+    void setBypassed(bool shouldBypass);
+
+    /**
+     * @brief Returns true if processing is bypassed.
+     */
+    [[nodiscard]] bool isBypassed() const { return m_isBypassed.load(); }
+
+    /**
      * @brief Parses an AutoEQ string and updates filter coefficients.
      * Use std::string_view for efficient read-only access where possible, 
      * though regex requires string/iterators.
@@ -64,6 +74,7 @@ private:
     int m_numChannels = 2;
     std::atomic<float> m_preampGain { 1.0f };
     std::atomic<bool> m_isUsingProfileB { false };
+    std::atomic<bool> m_isBypassed { false };
 
     FilterChain m_filterChainA;
     FilterChain m_filterChainB;

@@ -69,6 +69,41 @@ target_link_libraries(Equinox PRIVATE
 # Enable subnormal number handling and standard JUCE defines
 juce_generate_juce_header(Equinox)
 
+# --- GoogleTest Integration ---
+enable_testing()
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/heads/main.zip
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+# --- Create Test Executable ---
+add_executable(EquinoxTests
+    tests/DspTests.cpp
+    src/dsp/FilterProcessor.cpp
+    src/dsp/FilterProcessor.h
+    src/dsp/CrossfeedProcessor.h
+)
+
+target_link_libraries(EquinoxTests PRIVATE
+    GTest::gtest_main
+    juce::juce_audio_basics
+    juce::juce_audio_processors
+    juce::juce_dsp
+    juce::juce_core
+)
+
+target_compile_definitions(EquinoxTests PRIVATE
+    JUCE_UNIT_TESTS=1
+)
+
+include(GoogleTest)
+gtest_discover_tests(EquinoxTests)
+
+# --- Standard App Definitions ---
 target_compile_definitions(Equinox PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0

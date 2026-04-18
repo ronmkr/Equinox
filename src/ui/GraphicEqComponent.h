@@ -17,6 +17,7 @@ public:
     void resized() override;
 
     std::vector<float> getGains() const;
+    void resetGains();
 
 private:
     FilterProcessor& filterProcessor;

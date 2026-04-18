@@ -4,7 +4,6 @@
 namespace equinox
 {
 
-// Define layout structs inside namespace for easier access
 struct MainComponent::EqLayout : public juce::Component {
     GraphicEqComponent& geq;
     ParametricCurveComponent& curve;
@@ -27,6 +26,7 @@ struct MainComponent::PluginsLayout : public juce::Component {
         addAndMakeVisible(owner.scanButton);
         addAndMakeVisible(owner.addButton);
         addAndMakeVisible(owner.removeButton);
+        addAndMakeVisible(owner.editButton);
     }
     void resized() override {
         auto r = getLocalBounds().reduced(10);
@@ -39,6 +39,7 @@ struct MainComponent::PluginsLayout : public juce::Component {
         owner.knownPluginsList.setBounds(left);
 
         auto rightButtons = right.removeFromBottom(40);
+        owner.editButton.setBounds(rightButtons.removeFromLeft(100).reduced(2));
         owner.removeButton.setBounds(rightButtons.reduced(2));
         owner.activePluginsList.setBounds(right);
     }
@@ -94,6 +95,16 @@ MainComponent::MainComponent(AudioEngine& engine)
         audioEngine.getFilterProcessor().toggleAB();
     };
 
+    addAndMakeVisible(resetEqButton);
+    resetEqButton.onClick = [this] {
+        graphicEq.resetGains();
+    };
+
+    addAndMakeVisible(globalBypassToggle);
+    globalBypassToggle.onClick = [this] {
+        audioEngine.getFilterProcessor().setBypassed(globalBypassToggle.getToggleState());
+    };
+
     addAndMakeVisible(profileList);
     profileList.setTextWhenNoChoicesAvailable("No Profiles");
 
@@ -129,12 +140,6 @@ MainComponent::MainComponent(AudioEngine& engine)
     knownPluginsList.setModel(&knownPluginsModel);
     activePluginsList.setModel(&activePluginsModel);
 
-    pluginsContainer.addAndMakeVisible(knownPluginsList);
-    pluginsContainer.addAndMakeVisible(activePluginsList);
-    pluginsContainer.addAndMakeVisible(scanButton);
-    pluginsContainer.addAndMakeVisible(addButton);
-    pluginsContainer.addAndMakeVisible(removeButton);
-
     scanButton.onClick = [this] {
         audioEngine.scanPlugins();
         knownPluginsList.updateContent();
@@ -154,7 +159,18 @@ MainComponent::MainComponent(AudioEngine& engine)
         auto row = activePluginsList.getSelectedRow();
         if (row >= 0) {
             audioEngine.removePlugin(row);
+            activePluginWindow = nullptr;
             activePluginsList.updateContent();
+        }
+    };
+
+    editButton.onClick = [this] {
+        auto row = activePluginsList.getSelectedRow();
+        if (row >= 0) {
+            if (auto* p = audioEngine.getHostedPluginProcessor(row))
+            {
+                activePluginWindow = new PluginWindow(*p);
+            }
         }
     };
 
@@ -179,6 +195,8 @@ void MainComponent::resized()
     profileList.setBounds(topBar.removeFromLeft(150));
     saveButton.setBounds(topBar.removeFromLeft(80).reduced(2));
     abButton.setBounds(topBar.removeFromLeft(100).reduced(2));
+    resetEqButton.setBounds(topBar.removeFromLeft(100).reduced(2));
+    globalBypassToggle.setBounds(topBar.removeFromLeft(120).reduced(2));
 
     tabs.setBounds(area);
 }

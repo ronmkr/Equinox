@@ -57,4 +57,10 @@ std::vector<float> GraphicEqComponent::getGains() const
     return gains;
 }
 
+void GraphicEqComponent::resetGains()
+{
+    for (auto* s : sliders)
+        s->setValue(0.0, juce::sendNotification);
+}
+
 } // namespace equinox

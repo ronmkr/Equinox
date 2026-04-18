@@ -26,6 +26,9 @@ void FilterProcessor::prepareToPlay(double sampleRate, int samplesPerBlock, int 
 
 void FilterProcessor::processBlock(juce::AudioBuffer<float>& buffer)
 {
+    if (m_isBypassed.load())
+        return;
+
     // Apply Preamp
     buffer.applyGain(m_preampGain.load());
 
@@ -44,6 +47,11 @@ void FilterProcessor::reset()
 {
     m_filterChainA.reset();
     m_filterChainB.reset();
+}
+
+void FilterProcessor::setBypassed(bool shouldBypass)
+{
+    m_isBypassed.store(shouldBypass);
 }
 
 void FilterProcessor::setPreamp(float gainDb)

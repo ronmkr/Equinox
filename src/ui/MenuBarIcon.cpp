@@ -28,20 +28,23 @@ void MenuBarIcon::mouseDown(const juce::MouseEvent& e)
     m.addSectionHeader("Equinox DSP");
     m.addItem(1, "Open Equalizer...", true, false);
     m.addSeparator();
-    
-    m.addItem(2, "Bypass EQ", true, false); // Toggle logic would go here
+
+    m.addItem(2, "Bypass EQ", true, fp.isBypassed());
     m.addItem(3, "Toggle A/B", true, false);
-    
+
     m.addSeparator();
     m.addItem(10, "Quit", true, false);
 
     m.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(getScreenBounds()),
         [this, &fp](int result)
-
         {
             if (result == 1)
             {
                 if (m_openWindowCallback) m_openWindowCallback();
+            }
+            else if (result == 2)
+            {
+                fp.setBypassed(!fp.isBypassed());
             }
             else if (result == 3)
             {
@@ -52,6 +55,7 @@ void MenuBarIcon::mouseDown(const juce::MouseEvent& e)
                 juce::JUCEApplication::getInstance()->systemRequestedQuit();
             }
         });
+
 }
 
 } // namespace equinox

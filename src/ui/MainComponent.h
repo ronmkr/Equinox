@@ -28,6 +28,8 @@ private:
     // EQ Tab controls
     juce::TextButton saveButton { "Save" };
     juce::TextButton abButton { "A/B Toggle" };
+    juce::TextButton resetEqButton { "Reset EQ" };
+    juce::ToggleButton globalBypassToggle { "Global Bypass" };
     juce::ComboBox profileList;
     
     GraphicEqComponent graphicEq;
@@ -47,6 +49,7 @@ private:
     juce::TextButton scanButton { "Scan for Plugins" };
     juce::TextButton addButton { "Add Selected" };
     juce::TextButton removeButton { "Remove Selected" };
+    juce::TextButton editButton { "Edit Plugin" };
 
     struct EqLayout;
     struct PluginsLayout;
@@ -54,6 +57,25 @@ private:
     std::unique_ptr<EqLayout> eqLayout;
     std::unique_ptr<PluginsLayout> pluginsLayout;
     std::unique_ptr<SettingsLayout> settingsLayout;
+
+    // Plugin Editor management
+    class PluginWindow : public juce::DocumentWindow
+    {
+    public:
+        PluginWindow(juce::AudioProcessor& p)
+            : DocumentWindow(p.getName(), juce::Colours::black, DocumentWindow::allButtons)
+        {
+            setUsingNativeTitleBar(true);
+            if (auto* editor = p.createEditorIfNeeded())
+            {
+                setContentOwned(editor, true);
+                setResizable(editor->isResizable(), false);
+            }
+            setVisible(true);
+        }
+        void closeButtonPressed() override { delete this; }
+    };
+    juce::ComponentSafePointer<juce::Component> activePluginWindow;
 
     struct KnownPluginsModel : public juce::ListBoxModel {
         AudioEngine& engine;
