@@ -14,6 +14,8 @@ void FilterProcessor::prepareToPlay(double sampleRate, int samplesPerBlock, int 
 {
     m_sampleRate = sampleRate;
     m_numChannels = numChannels;
+    
+    juce::Logger::writeToLog("FilterProcessor::prepareToPlay - Rate: " + juce::String(sampleRate) + " Chans: " + juce::String(numChannels));
 
     juce::dsp::ProcessSpec spec { sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)numChannels };
 
@@ -36,7 +38,6 @@ void FilterProcessor::processBlock(juce::AudioBuffer<float>& buffer)
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
 
-    const juce::ScopedLock sl(m_coefficientsLock);
     if (m_isUsingProfileB.load())
         m_filterChainB.process(context);
     else
@@ -61,7 +62,6 @@ void FilterProcessor::setPreamp(float gainDb)
 
 void FilterProcessor::updateBandGain(int index, float frequency, float gainDb, float q)
 {
-    const juce::ScopedLock sl(m_coefficientsLock);
     auto& targetSettings = m_isUsingProfileB.load() ? m_settingsB : m_settingsA;
     if (index >= 0 && index < MaxFilters)
     {
@@ -69,6 +69,11 @@ void FilterProcessor::updateBandGain(int index, float frequency, float gainDb, f
         targetSettings[index].frequency = frequency;
         targetSettings[index].gain = gainDb;
         targetSettings[index].q = q;
+        
+        juce::Logger::writeToLog("EQ Update - Index: " + juce::String(index) + 
+                                " Freq: " + juce::String(frequency) + 
+                                " Gain: " + juce::String(gainDb));
+        
         updateFilterChain();
     }
 }
@@ -80,7 +85,6 @@ void FilterProcessor::toggleAB()
 
 void FilterProcessor::snapshotToOther()
 {
-    const juce::ScopedLock sl(m_coefficientsLock);
     if (m_isUsingProfileB.load())
         m_settingsA = m_settingsB;
     else
@@ -90,7 +94,6 @@ void FilterProcessor::snapshotToOther()
 
 float FilterProcessor::getMagnitudeForFrequency(float frequency, double sampleRate) const
 {
-    const juce::ScopedLock sl(m_coefficientsLock);
     auto magnitude = 1.0f;
     const auto& targetSettings = m_isUsingProfileB.load() ? m_settingsB : m_settingsA;
     for (const auto& s : targetSettings)
@@ -108,7 +111,6 @@ float FilterProcessor::calculateMaxGain() const
     float maxMag = 1.0f;
     const int numSteps = 100;
     
-    // Check 100 points logarithmic-ish from 20Hz to 20kHz
     for (int i = 0; i <= numSteps; ++i)
     {
         float freq = 20.0f * std::pow(1000.0f, (float)i / numSteps);
@@ -120,7 +122,6 @@ float FilterProcessor::calculateMaxGain() const
 
 void FilterProcessor::parseAutoEqString(const std::string& autoEqContent)
 {
-    const juce::ScopedLock sl(m_coefficientsLock);
     auto& targetSettings = m_isUsingProfileB.load() ? m_settingsB : m_settingsA;
 
     std::regex preampRegex(R"(Preamp:\s*([-+]?\d*\.?\d+)\s*dB)");
@@ -167,15 +168,24 @@ void FilterProcessor::updateFilterChain()
 {
     auto updateChain = [this](std::vector<FilterSettings>& settings, FilterChain& chain) {
         std::vector<juce::dsp::IIR::Coefficients<float>::Ptr> allCoeffs;
+        float totalGain = 0.0f;
+        int activeCount = 0;
+        
         for (auto& s : settings) {
             if (s.enabled) {
                 s.coefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(m_sampleRate, s.frequency, s.q, juce::Decibels::decibelsToGain(s.gain));
                 allCoeffs.push_back(s.coefficients);
+                totalGain += s.gain;
+                activeCount++;
             } else {
                 s.coefficients = nullptr;
                 allCoeffs.push_back(nullptr);
             }
         }
+        
+        if (activeCount > 0)
+            juce::Logger::writeToLog("DSP RECALC: " + juce::String(activeCount) + " filters active. Avg Gain: " + juce::String(totalGain / activeCount));
+            
         FilterChainUpdater<MaxFilters - 1>::update(chain, m_sampleRate, allCoeffs);
     };
 

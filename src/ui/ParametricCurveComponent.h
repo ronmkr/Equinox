@@ -14,10 +14,19 @@ public:
 
     void paint(juce::Graphics& g) override;
     void timerCallback() override;
+    
+    void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
 
 private:
     FilterProcessor& filterProcessor;
     juce::Path responsePath;
+    
+    int m_draggingIndex = -1;
+    
+    juce::Point<float> getPosForFreq(float freq, float gain);
+    float getFreqForPos(float x);
+    float getGainForPos(float y);
 
     void updatePath();
 

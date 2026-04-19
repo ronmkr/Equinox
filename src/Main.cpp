@@ -15,11 +15,34 @@ public:
 
     const juce::String getApplicationName() override       { return "Equinox"; }
     const juce::String getApplicationVersion() override    { return "0.1.0"; }
-    bool moreThanOneInstanceAllowed() override             { return true; }
+    bool moreThanOneInstanceAllowed() override             { return false; }
 
     void initialise(const juce::String& commandLine) override
     {
-        m_audioEngine.initialize();
+        // Named lock to prevent multiple instances
+        m_instanceLock = std::make_unique<juce::InterProcessLock>("com.equinox.app.lock");
+        if (!m_instanceLock->enter(100))
+        {
+            // Already running, quit this instance
+            juce::Logger::writeToLog("Equinox: Another instance is already running. Exiting.");
+            quit();
+            return;
+        }
+
+        // Initialize persistent logging in a known location
+        juce::File logFile("/tmp/EquinoxLog.txt");
+        
+        m_logger = std::make_unique<juce::FileLogger>(logFile, "Equinox Launch Log");
+        juce::Logger::setCurrentLogger(m_logger.get());
+        
+        juce::Logger::writeToLog("--- Equinox v0.1.0 Starting ---");
+        juce::Logger::writeToLog("Log path: " + logFile.getFullPathName());
+
+        // Check for Microphone Permission (Essential for macOS input)
+        juce::RuntimePermissions::request(juce::RuntimePermissions::recordAudio, [this](bool granted) {
+            juce::Logger::writeToLog(granted ? "Microphone Permission: GRANTED" : "Microphone Permission: DENIED");
+            // if (granted) m_audioEngine.initialize();
+        });
 
         m_menuBarIcon = std::make_unique<equinox::MenuBarIcon>(m_audioEngine, [this] {
             showMainWindow();
@@ -41,7 +64,10 @@ public:
         quit();
     }
 
-    void anotherInstanceStarted(const juce::String& commandLine) override {}
+    void anotherInstanceStarted(const juce::String& commandLine) override 
+    {
+        showMainWindow();
+    }
 
     void showMainWindow()
     {
@@ -88,6 +114,8 @@ public:
 
 private:
     equinox::AudioEngine m_audioEngine;
+    std::unique_ptr<juce::InterProcessLock> m_instanceLock;
+    std::unique_ptr<juce::FileLogger> m_logger;
     std::unique_ptr<equinox::MenuBarIcon> m_menuBarIcon;
     std::unique_ptr<MainWindow> m_mainWindow;
 };

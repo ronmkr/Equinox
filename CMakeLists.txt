@@ -50,6 +50,7 @@ target_sources(Equinox PRIVATE
     src/ui/TahoeLookAndFeel.h
     src/ui/MenuBarIcon.cpp
     src/ui/MenuBarIcon.h
+    src/ui/OscilloscopeComponent.h
     src/ui/GraphicEqComponent.cpp
     src/ui/GraphicEqComponent.h
     src/ui/ParametricCurveComponent.cpp

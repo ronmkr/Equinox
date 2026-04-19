@@ -99,7 +99,7 @@ public:
 
     juce::Font getTabButtonFont(juce::TabBarButton&, float height) override
     {
-        return juce::FontOptions(height * 0.5f, juce::Font::bold);
+        return juce::FontOptions("San Francisco", height * 0.45f, juce::Font::plain);
     }
 
 private:

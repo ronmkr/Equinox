@@ -9,10 +9,25 @@
 - **Safety Limiter**: Real-time `dsp::Limiter` at the end of the signal path to prevent output clipping.
 - **Profile Management**: Fast profile switching via SQLite with gapless A/B comparison.
 - **macOS Menu Bar App**: Runs silently in the background with quick access to common tasks.
-
 ## 🚀 How to Use
 
+### IMPORTANT: Processing System Audio (Spotify, YouTube, Music)
+macOS does not allow apps to capture system audio directly. To use Equinox as a system-wide EQ, you **must** use a virtual audio bridge like **BlackHole**.
+
+1.  **Install BlackHole 2ch:** [Download here](https://existential.audio/blackhole/) (Free/Open Source).
+2.  **Configure macOS Sound:**
+    *   Open **System Settings > Sound**.
+    *   Set **Output** to **BlackHole 2ch**.
+3.  **Configure Equinox:**
+    *   Open Equinox and go to the **Settings** tab.
+    *   Set **Input Device** to **BlackHole 2ch**.
+    *   Set **Output Device** to your **Headphones** or **Speakers**.
+4.  **Verification:** Your local music will now flow through BlackHole into Equinox, get Equalized, and play out through your speakers.
+
+---
+
 ### 1. Menu Bar Utility
+...
 After launching Equinox, you will see a white circle icon in your macOS menu bar.
 *   **Left/Right Click the Icon:** Opens the quick-access menu.
 *   **Switching Profiles:** Hover over "Profiles" to instantly select a saved preset.

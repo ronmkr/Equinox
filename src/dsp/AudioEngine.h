@@ -4,14 +4,17 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <juce_dsp/juce_dsp.h>
 #include "FilterProcessor.h"
+#include "CrossfeedProcessor.h"
+#include "LimiterProcessor.h"
 
 namespace equinox
 {
 
 /**
  * @class AudioEngine
- * @brief Manages audio devices and the signal routing from input to output using an AudioProcessorGraph.
+ * @brief Manages audio devices and signal processing chain.
  */
 class AudioEngine : public juce::AudioIODeviceCallback
 {
@@ -24,14 +27,18 @@ public:
 
     [[nodiscard]] juce::AudioDeviceManager& getDeviceManager() { return m_deviceManager; }
     [[nodiscard]] FilterProcessor& getFilterProcessor() { return m_deviceFilterProcessor; }
+    [[nodiscard]] CrossfeedProcessor& getCrossfeedProcessor() { return m_crossfeedProcessor; }
+    [[nodiscard]] LimiterProcessor& getLimiterProcessor() { return m_limiterProcessor; }
+    
+    [[nodiscard]] juce::dsp::Convolution& getConvolver() { return m_convolver; }
+    [[nodiscard]] juce::dsp::Compressor<float>& getCompressor() { return m_compressor; }
+
+    void setConvolutionEnabled(bool enabled) { m_isConvolutionEnabled.store(enabled); }
+    void setCompressorEnabled(bool enabled) { m_isCompressorEnabled.store(enabled); }
+
     [[nodiscard]] juce::AudioPluginFormatManager& getPluginFormatManager() { return m_pluginFormatManager; }
     [[nodiscard]] juce::KnownPluginList& getKnownPluginList() { return m_knownPluginList; }
 
-    [[nodiscard]] juce::AudioProcessorGraph::Node::Ptr getCrossfeedNode() { return m_crossfeedNode; }
-
-    /**
-     * @brief Automatically adjusts the preamp gain to avoid clipping.
-     */
     void applyAutoPreamp();
 
     void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
@@ -50,39 +57,48 @@ public:
     void removePlugin(int index);
 
     [[nodiscard]] int getHostedPluginCount() const { return static_cast<int>(m_pluginNodes.size()); }
+    [[nodiscard]] juce::PluginDescription getHostedPluginDescription(int index) const;
+    [[nodiscard]] juce::AudioProcessor* getHostedPluginProcessor(int index);
 
-    [[nodiscard]] juce::PluginDescription getHostedPluginDescription(int index) const
-    {
-        if (auto* instance = dynamic_cast<juce::AudioPluginInstance*>(m_pluginNodes[index]->getProcessor()))
-            return instance->getPluginDescription();
-        
-        return {};
-    }
+    [[nodiscard]] float getInputLevel() const { return m_inputLevel.load(); }
+    [[nodiscard]] float getOutputLevel() const { return m_outputLevel.load(); }
 
-    [[nodiscard]] juce::AudioProcessor* getHostedPluginProcessor(int index)
-    {
-        return m_pluginNodes[index]->getProcessor();
-    }
+    void setTestToneEnabled(bool shouldBeEnabled) { m_testToneEnabled.store(shouldBeEnabled); }
+    [[nodiscard]] bool isTestToneEnabled() const { return m_testToneEnabled.load(); }
+
+    void triggerSampleLog() { m_shouldLogSamples.store(true); }
+
+    // Visualizer support
+    std::function<void(float)> onSampleReceived;
 
 private:
     void setupGraph();
     void updateGraphRouting();
 
     juce::AudioDeviceManager m_deviceManager;
-    FilterProcessor m_deviceFilterProcessor; // Renamed from filterProcessor to avoid confusion with m_filterProcessor
+    FilterProcessor m_deviceFilterProcessor;
+    CrossfeedProcessor m_crossfeedProcessor;
+    LimiterProcessor m_limiterProcessor;
     
+    juce::dsp::Convolution m_convolver { juce::dsp::Convolution::Latency { 0 } };
+    juce::dsp::Compressor<float> m_compressor;
+
+    std::atomic<bool> m_isConvolutionEnabled { false };
+    std::atomic<bool> m_isCompressorEnabled { false };
+    std::atomic<bool> m_shouldLogSamples { false };
+
+    std::atomic<float> m_inputLevel { 0.0f };
+    std::atomic<float> m_outputLevel { 0.0f };
+    std::atomic<bool> m_testToneEnabled { false };
+    float m_testTonePhase = 0.0f;
+
     std::unique_ptr<juce::AudioProcessorGraph> m_mainGraph;
-    juce::AudioProcessorPlayer m_graphPlayer;
 
     juce::AudioPluginFormatManager m_pluginFormatManager;
     juce::KnownPluginList m_knownPluginList;
-    std::unique_ptr<juce::PluginDirectoryScanner> m_pluginScanner;
 
     juce::AudioProcessorGraph::Node::Ptr m_audioInputNode;
     juce::AudioProcessorGraph::Node::Ptr m_audioOutputNode;
-    juce::AudioProcessorGraph::Node::Ptr m_eqNode;
-    juce::AudioProcessorGraph::Node::Ptr m_crossfeedNode;
-    juce::AudioProcessorGraph::Node::Ptr m_limiterNode;
     
     std::vector<juce::AudioProcessorGraph::Node::Ptr> m_pluginNodes;
 

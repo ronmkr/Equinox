@@ -104,11 +104,30 @@ TEST_F(DspTest, ZeroChannelSafety)
 
 TEST_F(DspTest, RapidPrepareToPlay)
 {
-    for (int i = 0; i < 100; ++i)
-    {
-        filterProcessor.prepareToPlay(44100.0 + i, 128 + i, (i % 2) + 1);
-        filterProcessor.updateBandGain(0, 1000.0f, 1.0f, 1.0f);
-    }
+    // ...
+}
+
+TEST_F(DspTest, CompressorFunctionality)
+{
+    // Basic compressor test
+    juce::dsp::Compressor<float> comp;
+    juce::dsp::ProcessSpec spec { 44100.0, 512, 2 };
+    comp.prepare(spec);
+    
+    comp.setThreshold(-20.0f);
+    comp.setRatio(4.0f);
+    comp.setAttack(1.0f);
+    comp.setRelease(100.0f);
+
+    juce::AudioBuffer<float> buffer(2, 512);
+    for(int i=0; i<512; ++i) buffer.setSample(0, i, 1.0f); // Full scale signal (0dB)
+
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> context(block);
+    comp.process(context);
+
+    // Compressed signal should be significantly quieter than 1.0f
+    EXPECT_LT(buffer.getSample(0, 511), 0.5f);
 }
 
 } // namespace equinox

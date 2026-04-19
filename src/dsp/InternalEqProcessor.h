@@ -38,7 +38,18 @@ public:
     void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override
     {
         if (buffer.getNumChannels() > 0)
+        {
+            // Debug check for audio data presence
+            static int counter = 0;
+            if (++counter > 500)
+            {
+                if (buffer.getMagnitude(0, buffer.getNumSamples()) > 0.0f)
+                    juce::Logger::writeToLog("InternalEqProcessor: Processing non-silent buffer");
+                counter = 0;
+            }
+
             filterProcessor.processBlock(buffer);
+        }
     }
 
     // Mandatory juce::AudioProcessor overrides

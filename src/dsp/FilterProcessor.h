@@ -80,9 +80,6 @@ private:
     FilterChain m_filterChainB;
     std::vector<FilterSettings> m_settingsA;
     std::vector<FilterSettings> m_settingsB;
-
-    // Mutex for UI-to-DSP parameter updates
-    juce::CriticalSection m_coefficientsLock;
 };
 
 } // namespace equinox
