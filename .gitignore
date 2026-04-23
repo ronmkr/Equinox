@@ -40,3 +40,9 @@ _deps/
 *.pdb
 *.ilk
 *.exp
+
+# Project Specific
+log.txt
+*.txt
+*.xml
+*.png
