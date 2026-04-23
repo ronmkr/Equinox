@@ -32,7 +32,7 @@ void FilterProcessor::processBlock(juce::AudioBuffer<float>& buffer)
         return;
 
     // Apply Preamp
-    buffer.applyGain(m_preampGain.load());
+    buffer.applyGain(juce::Decibels::decibelsToGain(m_preampGain.load()));
 
     // Process through the chain
     juce::dsp::AudioBlock<float> block(buffer);
@@ -57,7 +57,16 @@ void FilterProcessor::setBypassed(bool shouldBypass)
 
 void FilterProcessor::setPreamp(float gainDb)
 {
-    m_preampGain.store(juce::Decibels::decibelsToGain(gainDb));
+    m_preampGain.store(gainDb);
+}
+
+std::vector<float> FilterProcessor::getGains() const
+{
+    std::vector<float> gains(MaxFilters, 0.0f);
+    const auto& settings = m_isUsingProfileB.load() ? m_settingsB : m_settingsA;
+    for (int i = 0; i < MaxFilters; ++i)
+        gains[i] = settings[i].gain;
+    return gains;
 }
 
 void FilterProcessor::updateBandGain(int index, float frequency, float gainDb, float q)

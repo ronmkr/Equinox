@@ -39,7 +39,11 @@ public:
     void parseAutoEqString(const std::string& autoEqContent);
 
     void setPreamp(float gainDb);
+    [[nodiscard]] float getPreamp() const { return m_preampGain.load(); }
     void updateBandGain(int index, float frequency, float gainDb, float q);
+    
+    [[nodiscard]] std::vector<float> getGains() const;
+
     void toggleAB();
     void snapshotToOther();
 

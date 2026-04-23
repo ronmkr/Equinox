@@ -103,4 +103,40 @@ bool ProfileManager::deleteProfile(const juce::String& name)
     return false;
 }
 
+void ProfileManager::setProfileForDevice(const juce::String& deviceUuid, const juce::String& profileName)
+{
+    auto xml = juce::XmlDocument::parse(dbFile);
+    if (!xml) return;
+
+    auto root = juce::ValueTree::fromXml(*xml);
+    auto mappings = root.getOrCreateChildWithName("DeviceMappings", nullptr);
+    
+    auto existing = mappings.getChildWithProperty("uuid", deviceUuid);
+    if (existing.isValid())
+        mappings.removeChild(existing, nullptr);
+
+    juce::ValueTree m("Mapping");
+    m.setProperty("uuid", deviceUuid, nullptr);
+    m.setProperty("profile", profileName, nullptr);
+    mappings.addChild(m, -1, nullptr);
+
+    root.createXml()->writeTo(dbFile);
+}
+
+juce::String ProfileManager::getProfileForDevice(const juce::String& deviceUuid)
+{
+    auto xml = juce::XmlDocument::parse(dbFile);
+    if (!xml) return {};
+
+    auto root = juce::ValueTree::fromXml(*xml);
+    auto mappings = root.getChildWithName("DeviceMappings");
+    if (mappings.isValid())
+    {
+        auto m = mappings.getChildWithProperty("uuid", deviceUuid);
+        if (m.isValid())
+            return m.getProperty("profile").toString();
+    }
+    return {};
+}
+
 } // namespace equinox

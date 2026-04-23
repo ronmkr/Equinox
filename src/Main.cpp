@@ -30,7 +30,7 @@ public:
         }
 
         // Initialize persistent logging in a known location
-        juce::File logFile("/tmp/EquinoxLog.txt");
+        juce::File logFile = juce::File::getCurrentWorkingDirectory().getChildFile("log.txt");
         
         m_logger = std::make_unique<juce::FileLogger>(logFile, "Equinox Launch Log");
         juce::Logger::setCurrentLogger(m_logger.get());
@@ -41,7 +41,7 @@ public:
         // Check for Microphone Permission (Essential for macOS input)
         juce::RuntimePermissions::request(juce::RuntimePermissions::recordAudio, [this](bool granted) {
             juce::Logger::writeToLog(granted ? "Microphone Permission: GRANTED" : "Microphone Permission: DENIED");
-            // if (granted) m_audioEngine.initialize();
+            m_audioEngine.initialize();
         });
 
         m_menuBarIcon = std::make_unique<equinox::MenuBarIcon>(m_audioEngine, [this] {

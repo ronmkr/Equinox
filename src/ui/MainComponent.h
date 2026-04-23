@@ -65,10 +65,13 @@ public:
     
     juce::ToggleButton crossfeedToggle { "CROSSFEED" };
     juce::ToggleButton compressorToggle { "DYNAMICS" };
+    juce::ToggleButton loudnessToggle { "LOUDNESS" };
     juce::ToggleButton convolutionToggle { "CONVOLUTION" };
     juce::ToggleButton bypassToggle { "BYPASS" };
     
     juce::TextButton hd600Button { "AUTOEQ: HD 600" };
+    juce::TextButton loadIrButton { "LOAD IR" };
+    juce::TextButton mapDeviceButton { "MAP DEVICE" };
     juce::TextButton resetBtn { "FLATTEN" };
 
     juce::AudioDeviceSelectorComponent deviceSelector;
@@ -78,6 +81,7 @@ private:
     AudioEngine& m_audioEngine;
     ProfileManager m_profileManager;
     TahoeLookAndFeel m_tahoeLookAndFeel;
+    std::unique_ptr<juce::FileChooser> m_irChooser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

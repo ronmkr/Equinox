@@ -4,8 +4,8 @@
 namespace equinox
 {
 
-ParametricCurveComponent::ParametricCurveComponent(FilterProcessor& processor)
-    : filterProcessor(processor)
+ParametricCurveComponent::ParametricCurveComponent(FilterProcessor& processor, AudioEngine& engine)
+    : filterProcessor(processor), m_audioEngine(engine)
 {
     startTimer(30); // 30Hz refresh
 }
@@ -14,28 +14,48 @@ void ParametricCurveComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colours::black.withAlpha(0.3f));
     
-    // Draw Grid
-    g.setColour(juce::Colours::white.withAlpha(0.1f));
+    // --- Draw FFT Spectrum ---
+    auto* fftData = m_audioEngine.getFFTData();
+    auto fftSize = AudioEngine::fftSize;
+    
+    juce::Path fftPath;
+    bool firstPoint = true;
+    
+    for (int i = 2; i < fftSize / 2; ++i)
+    {
+        float freq = (float)i * (44100.0f / (float)fftSize);
+        auto p = getPosForFreq(freq, 0.0f); // Base Y is middle
+        
+        // Log-scaled magnitude conversion for visualization
+        float mag = std::abs(fftData[i]);
+        float level = 0.0f;
+        if (mag > 0.00001f)
+            level = juce::jlimit(0.0f, 1.0f, (juce::Decibels::gainToDecibels(mag) + 100.0f) / 100.0f);
+
+        float yPos = (float)getHeight() - (level * (float)getHeight());
+        
+        if (firstPoint) {
+            fftPath.startNewSubPath(p.x, yPos);
+            firstPoint = false;
+        } else {
+            fftPath.lineTo(p.x, yPos);
+        }
+    }
+    
+    g.setColour(juce::Colours::white.withAlpha(0.15f));
+    g.strokePath(fftPath, juce::PathStrokeType(1.0f));
+    
+    // --- Draw Grid ---
+    g.setColour(juce::Colours::white.withAlpha(0.05f));
     for (float f = 100.0f; f < 20000.0f; f *= 2.0f) {
         auto p = getPosForFreq(f, 0.0f);
         g.drawVerticalLine((int)p.x, 0.0f, (float)getHeight());
     }
     
-    // Draw Curve
+    // --- Draw Curve ---
     updatePath();
-    g.setColour(juce::Colours::cyan);
+    g.setColour(juce::Colours::cyan.withAlpha(0.8f));
     g.strokePath(responsePath, juce::PathStrokeType(2.0f));
-
-    // Draw Interactive Nodes (the "Dots")
-    g.setColour(juce::Colours::white);
-    for (int i = 0; i < 31; ++i) {
-        // We'll just show nodes that aren't 0dB for clarity
-        // but for now, let's just show a few main ones
-        if (i % 3 == 0) {
-            // Frequency would be needed here - we'll approximate based on ISO frequencies
-            // or just use fixed spacing for now to prove interaction
-        }
-    }
 }
 
 void ParametricCurveComponent::timerCallback()

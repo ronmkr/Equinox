@@ -6,7 +6,7 @@ namespace equinox
 MainComponent::MainComponent(AudioEngine& engine)
     : header(inputMeter, outputMeter),
       m_audioEngine(engine),
-      curveComponent(engine.getFilterProcessor()),
+      curveComponent(engine.getFilterProcessor(), engine),
       graphicEq(engine.getFilterProcessor()),
       deviceSelector(engine.getDeviceManager(), 2, 2, 2, 2, true, true, true, false)
 {
@@ -30,9 +30,12 @@ MainComponent::MainComponent(AudioEngine& engine)
     
     addAndMakeVisible(crossfeedToggle);
     addAndMakeVisible(compressorToggle);
+    addAndMakeVisible(loudnessToggle);
     addAndMakeVisible(convolutionToggle);
     addAndMakeVisible(bypassToggle);
     addAndMakeVisible(hd600Button);
+    addAndMakeVisible(loadIrButton);
+    addAndMakeVisible(mapDeviceButton);
     addAndMakeVisible(resetBtn);
 
     masterFader.setRange(-60.0, 12.0, 0.1);
@@ -49,9 +52,51 @@ MainComponent::MainComponent(AudioEngine& engine)
     };
 
     // --- Logic ---
+    bypassToggle.setToggleState(m_audioEngine.getFilterProcessor().isBypassed(), juce::dontSendNotification);
     bypassToggle.onClick = [this] {
         m_audioEngine.getFilterProcessor().setBypassed(bypassToggle.getToggleState());
     };
+
+    crossfeedToggle.onClick = [this] {
+        m_audioEngine.getCrossfeedProcessor().setEnabled(crossfeedToggle.getToggleState());
+    };
+
+    compressorToggle.setToggleState(false, juce::dontSendNotification); // Default off
+    compressorToggle.onClick = [this] {
+        m_audioEngine.setCompressorEnabled(compressorToggle.getToggleState());
+    };
+
+    loudnessToggle.setToggleState(m_audioEngine.getLoudnessProcessor().isEnabled(), juce::dontSendNotification);
+    loudnessToggle.onClick = [this] {
+        m_audioEngine.setLoudnessEnabled(loudnessToggle.getToggleState());
+    };
+
+    convolutionToggle.setToggleState(m_audioEngine.getConvolutionProcessor().isEnabled(), juce::dontSendNotification);
+    convolutionToggle.onClick = [this] {
+        m_audioEngine.setConvolutionEnabled(convolutionToggle.getToggleState());
+    };
+
+    loadIrButton.onClick = [this] {
+        m_irChooser = std::make_unique<juce::FileChooser> ("Select an Impulse Response...", 
+                                                           juce::File::getSpecialLocation(juce::File::userHomeDirectory),
+                                                           "*.wav;*.aif;*.aiff");
+        m_irChooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                                 [this] (const juce::FileChooser& chooser)
+                                 {
+                                     auto file = chooser.getResult();
+                                     if (file.existsAsFile())
+                                     {
+                                         m_audioEngine.loadImpulseResponse(file);
+                                         convolutionToggle.setToggleState(true, juce::sendNotification);
+                                     }
+                                 });
+    };
+
+    mapDeviceButton.onClick = [this] {
+        m_audioEngine.saveCurrentProfileAs("HD 600");
+        m_audioEngine.mapCurrentDeviceToProfile("HD 600");
+    };
+
     resetBtn.onClick = [this] { graphicEq.resetGains(); masterFader.setValue(0.0); };
     
     hd600Button.onClick = [this] {
@@ -133,9 +178,12 @@ void MainComponent::resized()
     bypassToggle.setBounds(tools.removeFromTop(30));
     crossfeedToggle.setBounds(tools.removeFromTop(30));
     compressorToggle.setBounds(tools.removeFromTop(30));
+    loudnessToggle.setBounds(tools.removeFromTop(30));
     convolutionToggle.setBounds(tools.removeFromTop(30));
     resetBtn.setBounds(tools.removeFromBottom(40).reduced(2));
     hd600Button.setBounds(tools.removeFromBottom(40).reduced(2));
+    loadIrButton.setBounds(tools.removeFromBottom(40).reduced(2));
+    mapDeviceButton.setBounds(tools.removeFromBottom(40).reduced(2));
 }
 
 } // namespace equinox

@@ -10,6 +10,7 @@ namespace equinox
 struct EqProfile
 {
     juce::String name;
+    juce::String deviceUuid; // Optional mapping to hardware
     float preampDb = 0.0f;
     std::vector<float> gains; // 31 gains
 };
@@ -21,7 +22,7 @@ public:
     ~ProfileManager() = default;
 
     /**
-     * @brief Saves a profile to the SQLite database.
+     * @brief Saves a profile to the persistent store.
      */
     bool saveProfile(const EqProfile& profile);
 
@@ -39,6 +40,16 @@ public:
      * @brief Deletes a profile by name.
      */
     bool deleteProfile(const juce::String& name);
+
+    /**
+     * @brief Associates a profile name with a hardware device UUID.
+     */
+    void setProfileForDevice(const juce::String& deviceUuid, const juce::String& profileName);
+
+    /**
+     * @brief Returns the profile name associated with a device UUID, if any.
+     */
+    juce::String getProfileForDevice(const juce::String& deviceUuid);
 
 private:
     void initDatabase();

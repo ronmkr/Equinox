@@ -23,10 +23,12 @@ void AudioEngine::initialize()
 
     setupGraph();
     m_deviceManager.addAudioCallback(this);
+    m_deviceManager.addChangeListener(this);
 }
 
 void AudioEngine::shutdown()
 {
+    m_deviceManager.removeChangeListener(this);
     m_deviceManager.removeAudioCallback(this);
     m_mainGraph->clear();
     m_deviceManager.closeAudioDevice();
@@ -67,6 +69,26 @@ void AudioEngine::updateGraphRouting()
     m_mainGraph->suspendProcessing(false);
 }
 
+void AudioEngine::pushNextSampleIntoFifo(float sample) noexcept
+{
+    if (m_fifoIndex == fftSize)
+    {
+        if (!m_nextFFTBlockReady)
+        {
+            std::fill(m_fftData.begin(), m_fftData.end(), 0.0f);
+            std::copy(m_fifo.begin(), m_fifo.end(), m_fftData.begin());
+            m_nextFFTBlockReady = true;
+
+            m_window.multiplyWithWindowingTable(m_fftData.data(), fftSize);
+            m_forwardFFT.performFrequencyOnlyForwardTransform(m_fftData.data());
+            
+            m_nextFFTBlockReady = false;
+        }
+        m_fifoIndex = 0;
+    }
+    m_fifo[m_fifoIndex++] = sample;
+}
+
 void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
 {
     if (device)
@@ -79,9 +101,10 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
         m_deviceFilterProcessor.prepareToPlay(rate, buffer, std::max(numIns, numOuts));
         m_crossfeedProcessor.prepareToPlay(rate, buffer);
         m_limiterProcessor.prepareToPlay(rate, buffer);
+        m_convolutionProcessor.prepareToPlay(rate, buffer);
+        m_loudnessProcessor.prepareToPlay(rate, buffer);
         
         juce::dsp::ProcessSpec spec { rate, (juce::uint32)buffer, (juce::uint32)numOuts };
-        m_convolver.prepare(spec);
         m_compressor.prepare(spec);
 
         m_mainGraph->setPlayConfigDetails(numIns, numOuts, rate, buffer);
@@ -119,16 +142,14 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     {
         m_deviceFilterProcessor.processBlock(buffer);
 
+        juce::MidiBuffer midi;
         if (buffer.getNumChannels() >= 2) {
-            juce::MidiBuffer midi;
             m_crossfeedProcessor.processBlock(buffer, midi);
         }
 
-        if (m_isConvolutionEnabled.load()) {
-            juce::dsp::AudioBlock<float> block(buffer);
-            juce::dsp::ProcessContextReplacing<float> context(block);
-            m_convolver.process(context);
-        }
+        m_loudnessProcessor.setVolumeDb(m_deviceFilterProcessor.getPreamp());
+        m_loudnessProcessor.processBlock(buffer, midi);
+        m_convolutionProcessor.processBlock(buffer, midi);
 
         if (m_isCompressorEnabled.load()) {
             juce::dsp::AudioBlock<float> block(buffer);
@@ -136,9 +157,13 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
             m_compressor.process(context);
         }
 
-        juce::MidiBuffer midi;
         m_mainGraph->processBlock(buffer, midi);
         m_limiterProcessor.processBlock(buffer, midi);
+
+        // Feed FFT
+        auto* chL = buffer.getReadPointer(0);
+        for (int i = 0; i < numSamples; ++i)
+            pushNextSampleIntoFifo(chL[i]);
     }
 
     float outMag = buffer.getMagnitude(0, buffer.getNumSamples());
@@ -148,6 +173,56 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
 void AudioEngine::audioDeviceError(const juce::String& configErrorMessage)
 {
     juce::Logger::writeToLog("Audio Device Error: " + configErrorMessage);
+}
+
+void AudioEngine::loadProfile(const juce::String& name)
+{
+    auto profile = m_profileManager.loadProfile(name);
+    if (profile.name == name)
+    {
+        m_deviceFilterProcessor.setPreamp(profile.preampDb);
+        const auto isoFrequencies = { 20.0f, 25.0f, 31.5f, 40.0f, 50.0f, 63.0f, 80.0f, 100.0f, 125.0f, 160.0f, 
+                                     200.0f, 250.0f, 315.0f, 400.0f, 500.0f, 630.0f, 800.0f, 1000.0f, 1250.0f, 1600.0f, 
+                                     2000.0f, 2500.0f, 3150.0f, 4000.0f, 5000.0f, 6300.0f, 8000.0f, 10000.0f, 12500.0f, 16000.0f, 20000.0f };
+        
+        int i = 0;
+        for (auto f : isoFrequencies)
+        {
+            if (i < (int)profile.gains.size())
+                m_deviceFilterProcessor.updateBandGain(i, f, profile.gains[i], 1.0f);
+            i++;
+        }
+    }
+}
+
+void AudioEngine::saveCurrentProfileAs(const juce::String& name)
+{
+    EqProfile profile;
+    profile.name = name;
+    profile.preampDb = m_deviceFilterProcessor.getPreamp();
+    profile.gains = m_deviceFilterProcessor.getGains();
+    m_profileManager.saveProfile(profile);
+}
+
+void AudioEngine::mapCurrentDeviceToProfile(const juce::String& profileName)
+{
+    if (auto* output = m_deviceManager.getCurrentAudioDevice())
+    {
+        m_profileManager.setProfileForDevice(output->getName(), profileName);
+    }
+}
+
+void AudioEngine::changeListenerCallback(juce::ChangeBroadcaster*)
+{
+    if (auto* output = m_deviceManager.getCurrentAudioDevice())
+    {
+        auto profileName = m_profileManager.getProfileForDevice(output->getName());
+        if (profileName.isNotEmpty())
+        {
+            loadProfile(profileName);
+            juce::Logger::writeToLog("Equinox: Auto-loaded profile '" + profileName + "' for device '" + output->getName() + "'");
+        }
+    }
 }
 
 void AudioEngine::scanPlugins()

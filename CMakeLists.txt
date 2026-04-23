@@ -90,15 +90,21 @@ FetchContent_MakeAvailable(googletest)
 # --- Create Test Executable ---
 add_executable(EquinoxTests
     tests/DspTests.cpp
+    tests/NewProcessorTests.cpp
     src/dsp/FilterProcessor.cpp
     src/dsp/FilterProcessor.h
     src/dsp/CrossfeedProcessor.h
+    src/dsp/ProfileManager.cpp
+    src/dsp/ProfileManager.h
 )
 
 target_link_libraries(EquinoxTests PRIVATE
     GTest::gtest_main
     juce::juce_audio_basics
+    juce::juce_audio_devices
+    juce::juce_audio_utils
     juce::juce_audio_processors
+    juce::juce_data_structures
     juce::juce_dsp
     juce::juce_core
 )

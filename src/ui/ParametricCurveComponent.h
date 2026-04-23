@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../dsp/FilterProcessor.h"
+#include "../dsp/AudioEngine.h"
 
 namespace equinox
 {
@@ -9,7 +10,7 @@ namespace equinox
 class ParametricCurveComponent : public juce::Component, public juce::Timer
 {
 public:
-    ParametricCurveComponent(FilterProcessor& processor);
+    ParametricCurveComponent(FilterProcessor& processor, AudioEngine& engine);
     ~ParametricCurveComponent() override = default;
 
     void paint(juce::Graphics& g) override;
@@ -20,6 +21,7 @@ public:
 
 private:
     FilterProcessor& filterProcessor;
+    AudioEngine& m_audioEngine;
     juce::Path responsePath;
     
     int m_draggingIndex = -1;

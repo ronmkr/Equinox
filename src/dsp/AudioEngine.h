@@ -8,6 +8,9 @@
 #include "FilterProcessor.h"
 #include "CrossfeedProcessor.h"
 #include "LimiterProcessor.h"
+#include "ConvolutionProcessor.h"
+#include "ProfileManager.h"
+#include "LoudnessProcessor.h"
 
 namespace equinox
 {
@@ -16,7 +19,8 @@ namespace equinox
  * @class AudioEngine
  * @brief Manages audio devices and signal processing chain.
  */
-class AudioEngine : public juce::AudioIODeviceCallback
+class AudioEngine : public juce::AudioIODeviceCallback,
+                    public juce::ChangeListener
 {
 public:
     AudioEngine();
@@ -29,12 +33,21 @@ public:
     [[nodiscard]] FilterProcessor& getFilterProcessor() { return m_deviceFilterProcessor; }
     [[nodiscard]] CrossfeedProcessor& getCrossfeedProcessor() { return m_crossfeedProcessor; }
     [[nodiscard]] LimiterProcessor& getLimiterProcessor() { return m_limiterProcessor; }
+    [[nodiscard]] ConvolutionProcessor& getConvolutionProcessor() { return m_convolutionProcessor; }
+    [[nodiscard]] LoudnessProcessor& getLoudnessProcessor() { return m_loudnessProcessor; }
+    [[nodiscard]] ProfileManager& getProfileManager() { return m_profileManager; }
     
-    [[nodiscard]] juce::dsp::Convolution& getConvolver() { return m_convolver; }
     [[nodiscard]] juce::dsp::Compressor<float>& getCompressor() { return m_compressor; }
 
-    void setConvolutionEnabled(bool enabled) { m_isConvolutionEnabled.store(enabled); }
+    void setConvolutionEnabled(bool enabled) { m_convolutionProcessor.setEnabled(enabled); }
+    void setLoudnessEnabled(bool enabled) { m_loudnessProcessor.setEnabled(enabled); }
     void setCompressorEnabled(bool enabled) { m_isCompressorEnabled.store(enabled); }
+
+    void loadImpulseResponse(const juce::File& file) { m_convolutionProcessor.loadImpulseResponse(file); }
+
+    void loadProfile(const juce::String& name);
+    void saveCurrentProfileAs(const juce::String& name);
+    void mapCurrentDeviceToProfile(const juce::String& profileName);
 
     [[nodiscard]] juce::AudioPluginFormatManager& getPluginFormatManager() { return m_pluginFormatManager; }
     [[nodiscard]] juce::KnownPluginList& getKnownPluginList() { return m_knownPluginList; }
@@ -52,6 +65,9 @@ public:
     void audioDeviceStopped() override;
     void audioDeviceError(const juce::String& configErrorMessage) override;
 
+    // ChangeListener override
+    void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+
     void scanPlugins();
     bool addPlugin(const juce::PluginDescription& description);
     void removePlugin(int index);
@@ -68,22 +84,30 @@ public:
 
     void triggerSampleLog() { m_shouldLogSamples.store(true); }
 
+    // Spectral analysis
+    static constexpr int fftOrder = 11;
+    static constexpr int fftSize = 1 << fftOrder;
+    [[nodiscard]] const float* getFFTData() const { return m_fftData.data(); }
+
     // Visualizer support
     std::function<void(float)> onSampleReceived;
 
 private:
+    void pushNextSampleIntoFifo(float sample) noexcept;
+
     void setupGraph();
     void updateGraphRouting();
 
     juce::AudioDeviceManager m_deviceManager;
+    ProfileManager m_profileManager;
     FilterProcessor m_deviceFilterProcessor;
     CrossfeedProcessor m_crossfeedProcessor;
     LimiterProcessor m_limiterProcessor;
+    ConvolutionProcessor m_convolutionProcessor;
+    LoudnessProcessor m_loudnessProcessor;
     
-    juce::dsp::Convolution m_convolver { juce::dsp::Convolution::Latency { 0 } };
     juce::dsp::Compressor<float> m_compressor;
 
-    std::atomic<bool> m_isConvolutionEnabled { false };
     std::atomic<bool> m_isCompressorEnabled { false };
     std::atomic<bool> m_shouldLogSamples { false };
 
@@ -101,6 +125,14 @@ private:
     juce::AudioProcessorGraph::Node::Ptr m_audioOutputNode;
     
     std::vector<juce::AudioProcessorGraph::Node::Ptr> m_pluginNodes;
+
+    // FFT members
+    juce::dsp::FFT m_forwardFFT { fftOrder };
+    juce::dsp::WindowingFunction<float> m_window { fftSize, juce::dsp::WindowingFunction<float>::hann };
+    std::array<float, fftSize> m_fifo;
+    std::array<float, fftSize * 2> m_fftData;
+    int m_fifoIndex = 0;
+    bool m_nextFFTBlockReady = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioEngine)
 };
