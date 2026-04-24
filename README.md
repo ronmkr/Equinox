@@ -1,82 +1,54 @@
 # Equinox
 
-**Equinox** is a system-wide, low-latency audio equalization and processing application for macOS designed for audiophiles.
+Equinox is a system-wide, low-latency audio equalization and processing application for macOS designed for audiophiles. It provides a modular environment for high-precision filtering, plugin hosting, and real-time audio analysis.
 
 ## Core Features
-- **31-band Graphic and Parametric EQ**: High-precision filters using JUCE `dsp` module.
-- **AutoEQ/Squiglink curve import**: Direct parsing of standard AutoEQ strings.
-- **VST3/AU Plugin Hosting**: Integrated `AudioProcessorGraph` for serial plugin chains.
-- **Safety Limiter**: Real-time `dsp::Limiter` at the end of the signal path to prevent output clipping.
-- **Profile Management**: Fast profile switching via SQLite with gapless A/B comparison.
-- **macOS Menu Bar App**: Runs silently in the background with quick access to common tasks.
-## 🚀 How to Use
 
-### IMPORTANT: Processing System Audio (Spotify, YouTube, Music)
-macOS does not allow apps to capture system audio directly. To use Equinox as a system-wide EQ, you **must** use a virtual audio bridge like **BlackHole**.
+- **High-Precision EQ**: 31-band Graphic and Parametric EQ using high-fidelity biquad filters.
+- **AutoEQ Integration**: Direct import of standard AutoEQ and Squiglink curves.
+- **Plugin Hosting**: Support for VST3 and AU plugins via an integrated processing graph.
+- **Real-time Analysis**: Integrated oscilloscope and parametric curve visualizer.
+- **Safety First**: Hardcoded real-time limiter to protect hardware and hearing.
+- **Profile Management**: SQLite-backed preset system with gapless A/B switching.
+- **Minimal Footprint**: Runs as a macOS menu bar utility for quick access.
 
-1.  **Install BlackHole 2ch:** [Download here](https://existential.audio/blackhole/) (Free/Open Source).
-2.  **Configure macOS Sound:**
-    *   Open **System Settings > Sound**.
-    *   Set **Output** to **BlackHole 2ch**.
-3.  **Configure Equinox:**
-    *   Open Equinox and go to the **Settings** tab.
-    *   Set **Input Device** to **BlackHole 2ch**.
-    *   Set **Output Device** to your **Headphones** or **Speakers**.
-4.  **Verification:** Your local music will now flow through BlackHole into Equinox, get Equalized, and play out through your speakers.
-
----
-
-### 1. Menu Bar Utility
-...
-After launching Equinox, you will see a white circle icon in your macOS menu bar.
-*   **Left/Right Click the Icon:** Opens the quick-access menu.
-*   **Switching Profiles:** Hover over "Profiles" to instantly select a saved preset.
-*   **Toggle A/B:** Quickly switch between two profile states to compare sound signatures.
-*   **Bypass:** Instantly disable all processing to hear the original signal.
-
-### 2. Deep Customization
-Click **"Open Equalizer..."** from the menu to bring up the main interface:
-*   **Equalizer Tab:** Drag the 31 sliders or double-click to reset. The parametric visualizer shows the combined curve in real-time.
-*   **Plugins Tab:** 
-    1.  Click **"Scan for Plugins"** to find VST3 and AU plugins on your Mac.
-    2.  Select a plugin on the left and click **"Add Selected"**.
-    3.  Plugins are processed in series: `Input -> EQ -> Plugin 1 -> Plugin 2 -> Limiter -> Output`.
-*   **Settings Tab:** Select your virtual input device (loopback) and your physical output hardware.
-
-### 3. Importing AutoEQ
-Paste a standard AutoEQ string (e.g., from [AutoEQ.app](https://autoeq.app)) into the "Import" field to automatically configure all 31 bands.
-
----
-
-## 🛠 Architecture
-Equinox uses a modular graph-based architecture:
-1.  **Audio Input**: macOS CoreAudio loopback capture.
-2.  **EQ Engine**: 31-band biquad cascade (`FilterProcessor`).
-3.  **Plugin Chain**: Serially hosted external VST3/AU plugins.
-4.  **Limiter**: Final stage protection (`LimiterProcessor`).
-5.  **Audio Output**: Physical hardware output.
-
-## ⚙️ Building the Project
+## Getting Started
 
 ### Prerequisites
-- macOS 12.0 or later.
-- CMake 3.22+.
 
-### Build Instructions
+- macOS 12.0 or later
+- CMake 3.22+
+- (Optional) [BlackHole](https://github.com/ExistentialAudio/BlackHole) or a similar virtual audio loopback driver for system-wide processing.
+
+### Building from Source
+
 ```bash
-mkdir build && cd build
-cmake ..
-cmake --build . --parallel $(sysctl -n hw.ncpu)
+# Clone the repository
+git clone https://github.com/ronmkr/Equinox.git
+cd Equinox
+
+# Configure and build
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
 ```
 
-### ⚡ Why are builds slow?
-JUCE is a massive framework. We've optimized the project for JUCE 8. To further improve speed:
-*   **Avoid clean builds:** Only use `rm -rf build` when absolutely necessary.
-*   **Use Parallel Building:** Always use the `--parallel` flag as shown above.
-*   **Install Ninja (Recommended):** `brew install ninja`. Then build with `cmake .. -G Ninja`.
+## Usage
 
-## 🛡 Security & Safety
-Equinox is built with real-time audio safety in mind. All DSP parameter changes are lock-free and atomic. A safety limiter is hardcoded at the end of the signal chain to protect your ears and hardware from unexpected gain spikes.
+1. **Audio Routing**: To process system-wide audio, set your macOS Output device to a virtual bridge (e.g., BlackHole) and configure Equinox to use that bridge as its input.
+2. **Menu Bar**: Access quick profiles, bypass toggles, and A/B comparison directly from the menu bar icon.
+3. **Equalizer**: Open the main interface to customize the 31-band EQ or host external plugins.
+
+## Architecture
+
+Equinox is built on the JUCE 8 framework and utilizes a graph-based processing architecture:
+- **Audio Engine**: Handles device I/O and graph orchestration.
+- **DSP Chain**: Modular processors for EQ, Crossfeed, Loudness, and Convolution.
+- **Safety Layer**: Final-stage peak limiting for hardware protection.
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started and our development standards.
 
 ## License
-MIT License.
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
